@@ -1,3 +1,4 @@
 scripts/vocabulary.json
 __pycache__/
 *.pyc
+*.skill
