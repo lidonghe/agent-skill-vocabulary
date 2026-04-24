@@ -14,12 +14,7 @@
 
 ## 安装
 
-**方式一：ClawHub（推荐）**
-```bash
-clawhub install lidonghe/agent-skill-vocabulary
-```
 
-**方式二：手动安装**
 ```bash
 git clone git@github.com:lidonghe/agent-skill-vocabulary.git ~/.openclaw/workspace/skills/vocabulary-skill
 ```
