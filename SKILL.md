@@ -87,7 +87,9 @@ python3 {baseDir}/scripts/vocabulary.py stats
 **发送统计邮件：**
 当用户要求发送统计报告时：
 1. 检查 `~/.openclaw/workspace/skills/qqmail/` 是否存在（email skill）
-2. 若存在：调用 qqmail 发送统计到 `lidong.he@foxmail.com`
+2. 若存在：调用 qqmail 发送统计到 `lidong.he@foxmail.com`，邮件内容包含：
+   - 生词本统计（总单词数、测验次数、正确率、薄弱词）
+   - Workspace 动态摘要（今日完成事项、配置变更、活跃项目）
 3. 若不存在：告知用户未配置邮件技能
 
 ## 触发关键词
