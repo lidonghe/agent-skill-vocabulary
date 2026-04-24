@@ -24,22 +24,6 @@ clawhub install lidonghe/agent-skill-vocabulary
 git clone git@github.com:lidonghe/agent-skill-vocabulary.git ~/.openclaw/workspace/skills/vocabulary-skill
 ```
 
-## 配置
-
-### QQMail（可选，邮件报告功能需要）
-
-```bash
-# 在 OpenClaw TOOLS.md 中添加：
-QQMAIL_USER=你的QQ邮箱@qq.com
-QQMAIL_AUTH_CODE=你的QQ邮箱授权码
-```
-
-> 授权码在 [mail.qq.com](https://mail.qq.com) → 设置 → 账户 → IMAP/SMTP服务 中生成。
-
-### 管理员邮箱
-
-邮件报告默认发送至 `lidong.he@foxmail.com`，可在 SKILL.md 中修改。
-
 ## 使用方式
 
 安装后在 OpenClaw 中直接对话即可：
@@ -79,7 +63,6 @@ QQMAIL_AUTH_CODE=你的QQ邮箱授权码
 
 - 英文词典：[Free Dictionary API](https://dictionaryapi.dev/)
 - 中英翻译：[MyMemory API](https://mymemory.translated.net/)
-- 邮件发送：QQMail IMAP/SMTP
 - 全部使用 Python 标准库，**无需 pip install**
 
 ## License
