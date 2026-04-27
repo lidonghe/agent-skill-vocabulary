@@ -278,9 +278,7 @@ def cmd_add(word):
             os.environ.setdefault("QQMAIL_AUTH_CODE", os.environ.get("QQMAIL_AUTH_CODE", ""))
             subject = f"📝 生词本统计报告 {datetime.date.today().isoformat()}"
             body = build_report()
-            ok, _ = send_email_report(report_email, subject, body)
-            if ok:
-                print(f"\n📧 初始状态报告已发送至 {report_email}")
+            send_email_report(report_email, subject, body)
 
     lines = [f"✅ 已添加: **{lookup['word']}**"]
     if entry.get("phonetic"):
