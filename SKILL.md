@@ -91,13 +91,15 @@ python3 {baseDir}/scripts/vocabulary.py report --to <email>
 **测验流程：**
 1. 读取 `vocabulary.json`，随机抽取单词
 2. 逐题展示给用户（英文 + 音标），等待用户回复中文
-3. Agent 判断对错，直接更新对应单词的 `quiz_history`
-4. 循环直到题目答完，显示本次正确率
+3. **Agent 调用 LLM 判断用户答案是否语义等价于正确释义**
+4. 调用 `vocabulary.py record --id <qid> --result correct/wrong` 记录结果
+5. 循环直到题目答完，显示本次正确率
 
-**统计流程：**
-1. 读取 `vocabulary.json`
-2. 聚合所有单词的 `quiz_history`，计算各项指标
-3. 展示给用户
+**LLM 判断标准（Agent 执行）：**
+- 用户答案是否表达正确释义的核心含义
+- 允许同义词、近义表达、换一种说法
+- 短答案（如"事件"）+ 正确释义较长时，语义等价即可通过
+- 示例：`偶然发现` ≈ `偶然结合在一起的事件`
 
 **发送统计邮件（动态发现）：**
 当用户要求发送统计报告时，Agent 调用 `vocabulary.py report --to <addr>`，脚本内部：
