@@ -413,8 +413,7 @@ def build_workspace_summary():
             except Exception:
                 pass
 
-    # 读取 MEMORY.md 长期记忆，提取关键章节（排除用户隐私和纯配置段落）
-    skip_sections = {"用户偏好", "用户"}
+    # 读取 MEMORY.md 长期记忆，提取所有章节
     mem_md = os.path.join(workspace, "MEMORY.md")
     if os.path.isfile(mem_md):
         try:
@@ -424,17 +423,14 @@ def build_workspace_summary():
             sections = re.findall(r"(## .+?\n)(.*?)(?=\n## |\Z)", content, re.DOTALL)
             for title, body in sections:
                 title_clean = title.strip("# ").strip()
-                # 跳过用户隐私和纯占位章节
-                if title_clean in skip_sections:
-                    continue
                 body = body.strip()
-                meaningful = [p.strip() for p in body.split("\n")
-                              if p.strip() and not re.match(r"^（.+）$", p.strip())]
-                if meaningful:
+                if body:
                     lines.append(f"\n🗂 {title_clean}")
                     lines.append("-" * 40)
-                    for para in meaningful:
-                        lines.append(f"  {para}")
+                    for para in body.split("\n"):
+                        para = para.strip()
+                        if para:
+                            lines.append(f"  {para}")
                     found_entries = True
         except Exception:
             pass
