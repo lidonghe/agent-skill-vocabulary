@@ -293,7 +293,12 @@ def cmd_add(word):
     print("\n".join(lines))
 
 
-def cmd_quiz(limit=None):
+def cmd_quiz(limit=None, step=None):
+    """
+    测验入口。两种模式：
+    - 不带 --step：开始新一轮测验，存储所有题目到 settings，返回第一题
+    - 带 --step N：继续测验，返回第 N 题；N 超出范围时输出 ---END--- 结束
+    """
     data = load_vocab()
     words = data.get("words", [])
     if not words:
@@ -304,12 +309,33 @@ def cmd_quiz(limit=None):
         limit = len(words)
 
     sample = random.sample(words, min(limit, len(words)))
+    settings = data.setdefault("settings", {})
 
-    # 输出所有题目，Agent 逐题展示给用户
-    print(f"📝 测验开始！共 {len(sample)} 题\n")
-    for w in sample:
-        print(f"QID:{w['id']}|{w['word']}|{w.get('phonetic','')}")
-    print("---END---")
+    if step is None:
+        # 开始新测验，存储题目列表到 settings
+        settings["quiz_session"] = [{"id": w["id"], "word": w["word"], "phonetic": w.get("phonetic", "")} for w in sample]
+        settings["quiz_total"] = len(sample)
+        settings["quiz_step"] = 1
+        save_vocab(data)
+        idx = 0
+    else:
+        # 继续测验，settings 已在上一轮存入
+        session = settings.get("quiz_session", [])
+        settings["quiz_step"] = step
+        save_vocab(data)
+        if step - 1 < len(session):
+            idx = step - 1
+        else:
+            # 测验结束，清理 session
+            settings.pop("quiz_session", None)
+            settings.pop("quiz_total", None)
+            settings.pop("quiz_step", None)
+            save_vocab(data)
+            print("---END---")
+            return
+
+    q = settings["quiz_session"][idx]
+    print(f"QID:{q['id']}|{q['word']}|{q.get('phonetic','')}")
 
 
 def cmd_answer(qid, user_answer):
@@ -546,17 +572,21 @@ if __name__ == "__main__":
         cmd_add(sys.argv[2])
     elif cmd == "quiz":
         limit = None
+        step = None
         args = sys.argv[2:]
         if "--limit" in args:
             idx = args.index("--limit")
             limit = int(args[idx + 1]) if idx + 1 < len(args) else None
+        if "--step" in args:
+            idx = args.index("--step")
+            step = int(args[idx + 1]) if idx + 1 < len(args) else None
         if "--answer" in args:
             idx = args.index("--answer")
             qid = args[idx + 1]
             answer = args[idx + 2] if idx + 2 < len(args) else ""
             cmd_answer(qid, answer)
         else:
-            cmd_quiz(limit)
+            cmd_quiz(limit, step)
     elif cmd == "list":
         cmd_list()
     elif cmd == "stats":
