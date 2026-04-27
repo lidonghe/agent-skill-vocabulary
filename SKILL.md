@@ -26,7 +26,7 @@ data/words.json
 
 ## 使用前检查
 
-**触发条件**：skill 每次次被调用时
+**触发条件**：skill 被调用（必须执行）
 
 **判断依据**：检查 `data/words.json` 文件是否存在， 若不存在， 则执行首次邮件流程； 若文件存在， 则检查`data/words.json`中的 `settings.first_email_sent` 字段，若为 `false` 或字段不存在，则执行首次邮件流程。
 
