@@ -24,18 +24,23 @@ python3 {baseDir}/scripts/vocabulary.py add <word>
 - 存储内容：单词、音标、中文翻译、英文释义、例句
 - 若单词已存在，提示用户并跳过
 
-### 复习测验（英译中模式）
+### 复习测验（英译中模式，one-by-one）
 
 ```bash
+# 开始新测验，返回第一题
 python3 {baseDir}/scripts/vocabulary.py quiz [--limit N]
+
+# 继续第 N 题
+python3 {baseDir}/scripts/vocabulary.py quiz --step N
+
+# 提交答案（答完一题后调用，返回对错并进入下一题）
+python3 {baseDir}/scripts/vocabulary.py quiz --answer <qid> <用户答案>
 ```
 
-- 随机抽取 N 个单词（默认全部）
-- 显示：**英文单词 + 音标**，用户口述或输入中文意思
+- 每次只出一题，Agent 逐题展示给用户，用户答完后出下一题
 - 答案判断：用户输入中包含正确中文翻译即为正确
-- 实时显示对错，记录到 `quiz_history`
-- 输入 `q` 可中途退出
-- 结束后显示本次正确率
+- 记录到 `quiz_history`，所有题目答完输出 ---END--- 结束
+- `--limit N`：随机抽取 N 个单词（默认全部）
 
 ### 查看生词本
 
