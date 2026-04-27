@@ -41,17 +41,53 @@ def _skill_script(base_dir, candidates):
 
 
 def _skill_cmd(script, args_template, to, subject, body):
-    """用格式化模板构造并执行命令。"""
-    args_str = args_template.format(to=to, subject=subject, body=body)
-    if script.endswith(".py"):
-        cmd = [sys.executable, script] + shlex.split(args_str)
-    else:
-        cmd = [script] + shlex.split(args_str)
+    """
+    用格式化模板构造并执行命令。
+    对于 qqmail，直接 import 调用其 cmd_send，绕过命令行转义问题；
+    其他 skill 走 subprocess（body 通过临时文件传递）。
+    """
+    import tempfile
+
+    # qqmail 直接 import 调用最干净
+    if "qqmail" in script:
+        qqmail_dir = os.path.dirname(script)
+        qqmail_module = os.path.splitext(os.path.basename(script))[0]
+        sys.path.insert(0, qqmail_dir)
+        try:
+            import importlib
+            mod = importlib.import_module(qqmail_module)
+            # 构造一个 Namespace 对象模拟 argparse
+            class FakeArgs:
+                pass
+            args = FakeArgs()
+            args.to = to
+            args.subject = subject
+            args.body = body
+            args.attachment = None
+            mod.cmd_send(args)
+            return True, f"OK via import"
+        except Exception as e:
+            return False, str(e)
+        finally:
+            sys.path.pop(0)
+
+    # 通用方案：body 写入临时文件，命令用 @file 语法（支持 xargs 等工具）
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False, suffix=".txt") as f:
+        f.write(body)
+        body_file = f.name
+
     try:
+        args_str = args_template.format(to=to, subject=subject, body=f"@{body_file}")
+        if script.endswith(".py"):
+            cmd = [sys.executable, script] + shlex.split(args_str)
+        else:
+            cmd = [script] + shlex.split(args_str)
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         return result.returncode == 0, result.stdout + result.stderr
     except Exception as e:
         return False, str(e)
+    finally:
+        os.unlink(body_file)
 
 
 def discover_email_skill():
@@ -342,6 +378,72 @@ def cmd_stats():
         print("\n  🎉 没有薄弱词，继续保持！")
 
 
+def build_workspace_summary():
+    """
+    生成 Workspace 完整动态摘要。
+    读取 memory/ 目录下所有日记文件 + MEMORY.md 的长期记忆，
+    按时间倒序输出全部内容。
+    """
+    workspace = os.path.expanduser("~/.openclaw/workspace")
+    lines = []
+    memory_dir = os.path.join(workspace, "memory")
+    found_entries = False
+
+    # 收集所有 memory/*.md 文件，按文件名倒序（最新的在前）
+    if os.path.isdir(memory_dir):
+        mem_files = sorted(
+            [f for f in os.listdir(memory_dir) if f.endswith(".md")],
+            reverse=True
+        )
+        for fname in mem_files:
+            mem_file = os.path.join(memory_dir, fname)
+            try:
+                with open(mem_file, "r", encoding="utf-8") as f:
+                    content = f.read().strip()
+                if content:
+                    # 提取日期标题（文件名去掉 .md）
+                    date_label = fname.replace(".md", "")
+                    lines.append(f"\n📋 {date_label}")
+                    lines.append("-" * 40)
+                    for para in content.split("\n"):
+                        para = para.strip()
+                        if para and not para.startswith("#"):
+                            lines.append(f"  {para}")
+                    found_entries = True
+            except Exception:
+                pass
+
+    # 读取 MEMORY.md 长期记忆，提取关键章节（排除用户隐私和纯配置段落）
+    skip_sections = {"用户偏好", "用户"}
+    mem_md = os.path.join(workspace, "MEMORY.md")
+    if os.path.isfile(mem_md):
+        try:
+            with open(mem_md, "r", encoding="utf-8") as f:
+                content = f.read()
+            # 提取所有 ## 章节
+            sections = re.findall(r"(## .+?\n)(.*?)(?=\n## |\Z)", content, re.DOTALL)
+            for title, body in sections:
+                title_clean = title.strip("# ").strip()
+                # 跳过用户隐私和纯占位章节
+                if title_clean in skip_sections:
+                    continue
+                body = body.strip()
+                meaningful = [p.strip() for p in body.split("\n")
+                              if p.strip() and not re.match(r"^（.+）$", p.strip())]
+                if meaningful:
+                    lines.append(f"\n🗂 {title_clean}")
+                    lines.append("-" * 40)
+                    for para in meaningful:
+                        lines.append(f"  {para}")
+                    found_entries = True
+        except Exception:
+            pass
+
+    if not found_entries:
+        return ""
+    return "\n".join(lines)
+
+
 def build_report():
     """生成纯文本统计报告内容（不发送）。"""
     data = load_vocab()
@@ -370,6 +472,7 @@ def build_report():
     lines = [
         f"📊 生词本统计报告",
         f"{'='*40}",
+        f"报告日期：{datetime.date.today().isoformat()}",
         f"总单词数：{total}",
         f"总测验次数：{total_quizzes}",
         f"总正确率：{total_correct}/{total_quizzes} ({overall_acc:.0f}%)",
@@ -380,6 +483,15 @@ def build_report():
             lines.append(f"  {w} — {cn} — {acc*100:.0f}%（{n}次）")
     else:
         lines.append(f"\n🎉 暂无薄弱词，继续保持！")
+
+    # 追加 Workspace 动态摘要
+    ws_summary = build_workspace_summary()
+    if ws_summary:
+        lines.append(f"\n\n{'='*40}")
+        lines.append("🗂 Workspace 动态摘要")
+        lines.append("=" * 40)
+        lines.append(ws_summary)
+
     return "\n".join(lines)
 
 
