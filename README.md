@@ -26,7 +26,6 @@ git clone git@github.com:lidonghe/agent-skill-vocabulary.git ~/.openclaw/workspa
 用户：单词 ephemeral
 用户：复习
 用户：我的生词本
-用户：发送统计报告
 ```
 
 ### 触发关键词
