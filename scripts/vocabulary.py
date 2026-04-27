@@ -338,6 +338,63 @@ def cmd_quiz(limit=None, step=None):
     print(f"QID:{q['id']}|{q['word']}|{q.get('phonetic','')}")
 
 
+def _fuzzy_match(correct, answer):
+    """
+    模糊匹配：判断用户答案是否命中正确答案的核心含义。
+    满足任一即正确：
+    1. 完全包含正确答案（子串匹配）
+    2. 字符重叠率达到 50% 且 Jaccard < 0.30（答案覆盖率远高于正确文本覆盖率）
+    3. 3-gram 重叠率达到 25%
+    4. 任意一个 4 字以上片段命中
+    5. 答案字符全部在正确文本中（Jaccard < 0.20）且 ≥ 2 字符
+    """
+    import re
+    if correct in answer:
+        return True
+    if not correct.strip():
+        return bool(answer.strip())
+
+    def chars(s):
+        return set(re.findall(r"[\u4e00-\u9fff]", s))
+
+    def ngrams(s, n):
+        c = re.findall(r"[\u4e00-\u9fff]", s)
+        return set("".join(c[i:i+n]) for i in range(len(c)-n+1))
+
+    c_chars = chars(correct)
+    a_chars = chars(answer)
+
+    if c_chars and a_chars:
+        shared = c_chars & a_chars
+        union = c_chars | a_chars
+        cov_c = len(shared) / len(c_chars)       # 正确文本被答案覆盖了多少
+        cov_a = len(shared) / len(a_chars)       # 答案字符有多少在正确文本中
+        jaccard = len(shared) / len(union)
+
+        # 策略2：答案覆盖正确文本 50%+，且两者高度不对称（答案更小/更集中）
+        if cov_c >= 0.5 and cov_a > cov_c * 0.7:
+            return True
+
+        # 策略5：答案大部分字符在正确文本中（Jaccard 低 = 答案较小且高度重叠）
+        if cov_a >= 0.6 and jaccard < 0.20 and len(a_chars) >= 2:
+            return True
+
+    # 策略3：3-gram 重叠率 25%
+    c3 = ngrams(correct, 3)
+    a3 = ngrams(answer, 3)
+    if c3 and a3:
+        overlap3 = len(c3 & a3) / len(c3)
+        if overlap3 >= 0.25:
+            return True
+
+    # 策略4：4字以上片段命中
+    c4 = ngrams(correct, 4)
+    if c4 and any(p in answer for p in c4):
+        return True
+
+    return False
+
+
 def cmd_answer(qid, user_answer):
     data = load_vocab()
     words = data.get("words", [])
@@ -348,11 +405,7 @@ def cmd_answer(qid, user_answer):
         return
 
     chinese_correct = w.get("chinese", "")
-    is_correct = False
-    if chinese_correct and chinese_correct in user_answer.strip():
-        is_correct = True
-    elif not chinese_correct and user_answer.strip():
-        is_correct = True
+    is_correct = _fuzzy_match(chinese_correct, user_answer.strip()) if chinese_correct else bool(user_answer.strip())
 
     today = datetime.date.today().isoformat()
     result = "correct" if is_correct else "wrong"
