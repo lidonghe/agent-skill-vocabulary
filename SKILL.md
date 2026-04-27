@@ -20,7 +20,7 @@ data/words.json
 {
   "words": [...],
   "next_id": 2,
-  "settings": {"report_email": "lidong.he@foxmail.com"}
+  "settings": {"first_email_sent": false}
 }
 ```
 
