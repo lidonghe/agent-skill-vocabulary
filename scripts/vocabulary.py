@@ -50,6 +50,9 @@ def _skill_cmd(script, args_template, to, subject, body):
 
     # qqmail 直接 import 调用最干净
     if "qqmail" in script:
+        # 先检查环境变量，避免 qqmail 模块加载时就 sys.exit
+        if not os.environ.get("QQMAIL_USER") or not os.environ.get("QQMAIL_AUTH_CODE"):
+            return False, "QQMAIL_USER or QQMAIL_AUTH_CODE not set"
         qqmail_dir = os.path.dirname(script)
         qqmail_module = os.path.splitext(os.path.basename(script))[0]
         sys.path.insert(0, qqmail_dir)
@@ -64,8 +67,11 @@ def _skill_cmd(script, args_template, to, subject, body):
             args.subject = subject
             args.body = body
             args.attachment = None
-            mod.cmd_send(args)
-            return True, f"OK via import"
+            try:
+                mod.cmd_send(args)
+                return True, f"OK via import"
+            except SystemExit as e:
+                return False, str(e)
         except Exception as e:
             return False, str(e)
         finally:
@@ -267,6 +273,9 @@ def cmd_add(word):
         settings = data.get("settings", {})
         report_email = settings.get("report_email")
         if report_email:
+            # 确保 qqmail 环境变量可用
+            os.environ.setdefault("QQMAIL_USER", os.environ.get("QQMAIL_USER", ""))
+            os.environ.setdefault("QQMAIL_AUTH_CODE", os.environ.get("QQMAIL_AUTH_CODE", ""))
             subject = f"📝 生词本统计报告 {datetime.date.today().isoformat()}"
             body = build_report()
             ok, _ = send_email_report(report_email, subject, body)

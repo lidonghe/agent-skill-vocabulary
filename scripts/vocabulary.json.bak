@@ -1,0 +1,85 @@
+{
+  "words": [
+    {
+      "id": 1,
+      "word": "ephemeral",
+      "phonetic": "/əˈfɛ.mə.ɹəl/",
+      "definitions": [
+        {
+          "pos": "noun",
+          "def": "Something which lasts for a short period of time.",
+          "example": ""
+        },
+        {
+          "pos": "adjective",
+          "def": "Lasting for a short period of time.",
+          "example": ""
+        },
+        {
+          "pos": "adjective",
+          "def": "Existing for only one day, as with some flowers, insects, and diseases.",
+          "example": ""
+        }
+      ],
+      "added_at": "2026-04-24",
+      "quiz_history": [
+        {
+          "date": "2026-04-24",
+          "result": "correct"
+        },
+        {
+          "date": "2026-04-24",
+          "result": "correct"
+        },
+        {
+          "date": "2026-04-24",
+          "result": "wrong"
+        },
+        {
+          "date": "2026-04-27",
+          "result": "wrong"
+        }
+      ],
+      "chinese": "持续时间很短的东西。"
+    },
+    {
+      "id": 2,
+      "word": "viva",
+      "phonetic": "/ˈviː.və/",
+      "definitions": [
+        {
+          "pos": "noun",
+          "def": "A shout of applause.",
+          "example": ""
+        },
+        {
+          "pos": "verb",
+          "def": "To cheer, applaud",
+          "example": ""
+        },
+        {
+          "pos": "interjection",
+          "def": "Long live ... ! (used to express acclaim or support).",
+          "example": ""
+        }
+      ],
+      "added_at": "2026-04-24",
+      "quiz_history": [
+        {
+          "date": "2026-04-24",
+          "result": "correct"
+        },
+        {
+          "date": "2026-04-24",
+          "result": "correct"
+        },
+        {
+          "date": "2026-04-27",
+          "result": "wrong"
+        }
+      ],
+      "chinese": "一阵掌声。"
+    }
+  ],
+  "next_id": 3
+}
