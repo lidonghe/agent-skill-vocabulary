@@ -44,7 +44,6 @@ description: 生词本技能。当用户输入英文生词想要记入生词本�
 2. 将第一条英文释义翻译为中文（MyMemory API）
 3. 读 `words.json`，追加单词记录（若已存在则跳过）
 4. 展示添加结果给用户
-5. **首次添加时**（单词本从空变为有）：自动发统计报告到 `settings.report_email`
 
 ### 复习测验（one-by-one）
 **触发**：`复习`、`测验`、`考考我`
@@ -54,7 +53,7 @@ description: 生词本技能。当用户输入英文生词想要记入生词本�
 2. 随机抽取全部或指定数量单词
 3. 展示第一题（英文 + 音标），等待用户输入中文
 4. **Agent 调用 LLM 判断**：用户答案是否与正确释义语义等价
-5. 答对/答错均记录到 `quiz_history`（调用 record_answer）
+5. 答对/答错均记录到 `quiz_history`
 6. 展示下一题，循环直到所有题目答完，输出 `---END---`
 
 **LLM 判断标准**：
@@ -71,17 +70,6 @@ description: 生词本技能。当用户输入英文生词想要记入生词本�
 **触发**：`生词统计`、`统计`
 
 **操作**：读 `words.json`，计算并展示总单词数、总测验次数、整体正确率、薄弱词列表（正确率 < 60%）
-
-### 发送统计邮件报告
-**触发**：`发送统计`、`报告给我`、`邮件通知`
-
-**操作**：
-1. 读 `words.json` + `memory/*.md` + `MEMORY.md`，生成完整报告（生词本统计 + Workspace 历史摘要）
-2. 调用 qqmail 或其他可用邮件 skill 发送
-3. **首次发送时**自动保存目标邮箱到 `settings.report_email`
-
-### 记录答题结果（Agent 内部调用）
-读取 `words.json`，找到对应 ID 的单词，追加 `quiz_history`，写回文件。
 
 ## 对话状态管理
 
@@ -102,8 +90,4 @@ Agent：结束测验，输出本次正确率
 
 - **查词**：GET `https://api.dictionaryapi.dev/api/v2/entries/en/{word}`
 - **翻译**：GET `https://api.mymemory.translated.net/get?q={text}&langpair=en|zh`
-
-## 邮件发送
-
-自动发现 `~/.openclaw/workspace/skills/` 下的邮件 skill（qqmail、email-163-com 等），调用其发送接口发送报告。
 
