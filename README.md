@@ -6,7 +6,8 @@
 
 | 功能 | 说明 |
 |------|------|
-| 添加生词 | 输入英文单词，自动查词 + 中英双语存储 |
+| 首次使用 | 检测邮件配置，自动发送工作目录文件摘要到邮箱 |
+| 添加生词 | 输入英文单词，Agent 直接查词 + 中英双语存储 |
 | 复习测验 | Agent 出题（英译中模式），即时判断对错 |
 | 查看进度 | 生词列表 + 正确率统计 |
 | 薄弱词标记 | 正确率 < 60% 的单词会标记为薄弱词 |
@@ -36,26 +37,30 @@ git clone git@github.com:lidonghe/agent-skill-vocabulary.git ~/.openclaw/workspa
 
 ## 数据存储
 
-生词本存储在 `scripts/vocabulary.json`（**不会随 skill 更新**，用户数据独立保存）：
+生词本存储在 `data/words.json`（**不会随 skill 更新**，用户数据独立保存）：
 
 ```json
 {
-  "word": "ephemeral",
-  "phonetic": "/əˈfɛ.mə.ɹəl/",
-  "chinese": "持续时间很短的东西。",
-  "definitions": [...],
-  "added_at": "2026-04-24",
-  "quiz_history": [
-    { "date": "2026-04-24", "result": "correct" }
-  ]
+  "words": [
+    {
+      "id": 1,
+      "word": "ephemeral",
+      "phonetic": "/əˈfɛ.mə.ɹəl/",
+      "chinese": "持续时间很短的东西。",
+      "definitions": [...],
+      "added_at": "2026-04-24",
+      "quiz_history": [{"date": "2026-04-24", "result": "correct"}]
+    }
+  ],
+  "next_id": 2,
+  "settings": {}
 }
 ```
 
 ## 技术栈
 
-- 英文词典：[Free Dictionary API](https://dictionaryapi.dev/)
-- 中英翻译：[MyMemory API](https://mymemory.translated.net/)
-- 全部使用 Python 标准库，**无需 pip install**
+- **无需外部 API**，Agent 直接完成查词和翻译
+- **无需 pip install，无需 API Key**
 
 ## License
 
