@@ -7,8 +7,12 @@ Usage:
     python3 vocabulary.py quiz --answer <id> <user_answer>  # 判题
     python3 vocabulary.py list
     python3 vocabulary.py stats
+    python3 vocabulary.py report --to <email>  # 生成并发送统计报告
 """
 import json
+import re
+import shlex
+import subprocess
 import sys
 import os
 import random
@@ -20,7 +24,110 @@ import urllib.parse
 VOCAB_FILE = os.path.join(os.path.dirname(__file__), "vocabulary.json")
 DICT_API = "https://api.dictionaryapi.dev/api/v2/entries/en/{word}"
 TRANS_API = "https://api.mymemory.translated.net/get"
+SKILLS_DIR = os.path.expanduser("~/.openclaw/workspace/skills/")
 
+
+# ---------------------------------------------------------------------------
+# 动态邮件发现
+# ---------------------------------------------------------------------------
+
+def _skill_script(base_dir, candidates):
+    """在 base_dir 下查找候选脚本文件，找到第一个存在的并返回完整路径。"""
+    for c in candidates:
+        path = os.path.join(base_dir, c)
+        if os.path.isfile(path):
+            return path
+    return None
+
+
+def _skill_cmd(script, args_template, to, subject, body):
+    """用格式化模板构造并执行命令。"""
+    args_str = args_template.format(to=to, subject=subject, body=body)
+    if script.endswith(".py"):
+        cmd = [sys.executable, script] + shlex.split(args_str)
+    else:
+        cmd = [script] + shlex.split(args_str)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        return result.returncode == 0, result.stdout + result.stderr
+    except Exception as e:
+        return False, str(e)
+
+
+def discover_email_skill():
+    """
+    扫描 ~/.openclaw/workspace/skills/ 下的各个邮件 skill，
+    返回 (send_func, skill_name) 元组；若未发现可用 skill，返回 (None, None)。
+    send_func(to, subject, body) -> (bool, message)
+    """
+    if not os.path.isdir(SKILLS_DIR):
+        return None, None
+
+    for skill in os.listdir(SKILLS_DIR):
+        skill_dir = os.path.join(SKILLS_DIR, skill)
+        if not os.path.isdir(skill_dir):
+            continue
+
+        # ---------- qqmail ----------
+        if skill == "qqmail":
+            script = _skill_script(skill_dir, ["scripts/qqmail.py"])
+            if script:
+                def send(to, subj, body, s=script):
+                    code, out = _skill_cmd(s, f'send --to "{{to}}" --subject "{{subject}}" --body "{{body}}"', to, subj, body)
+                    return code, out
+                return send, "qqmail"
+
+        # ---------- email-163-com ----------
+        # skill 目录名含 email/qqmail 等关键词，且有可执行脚本
+        if "email" in skill.lower() or "mail" in skill.lower():
+            # 尝试找 Python 脚本
+            scripts_dir = os.path.join(skill_dir, "scripts")
+            if os.path.isdir(scripts_dir):
+                for fname in os.listdir(scripts_dir):
+                    if fname.endswith(".py"):
+                        script = os.path.join(scripts_dir, fname)
+                        name = fname.replace(".py", "")
+                        def send(to, subj, body, s=script, n=name):
+                            code, out = _skill_cmd(s,
+                                f"{n} send --to '{{to}}' --subject '{{subject}}' --body '{{body}}'",
+                                to, subj, body)
+                            return code, out
+                        return send, f"{skill}({fname})"
+
+            # 也可能是单脚本 skill（如 email-163-com）
+            for fname in os.listdir(skill_dir):
+                if fname.endswith(".py") and not fname.startswith("_"):
+                    script = os.path.join(skill_dir, fname)
+                    name = skill.replace("-", "_")
+                    def send(to, subj, body, s=script, n=name):
+                        code, out = _skill_cmd(s,
+                            f"{n} send --to '{{to}}' --subject '{{subject}}' --body '{{body}}'",
+                            to, subj, body)
+                        return code, out
+                    return send, f"{skill}({fname})"
+
+    return None, None
+
+
+def send_email_report(to_addr, subject, body):
+    """尝试发送邮件报告，自动发现可用邮件 skill。"""
+    send_func, skill_name = discover_email_skill()
+    if send_func is None:
+        return False, (
+            "未发现可用的邮件 skill。"
+            "支持的邮件 skill：qqmail、email-163-com、resend-email 等。"
+            "请先安装并配置至少一个邮件 skill。"
+        )
+    ok, msg = send_func(to_addr, subject, body)
+    if ok:
+        return True, f"邮件已通过 [{skill_name}] 发送至 {to_addr}"
+    else:
+        return False, f"[{skill_name}] 发送失败：{msg}"
+
+
+# ---------------------------------------------------------------------------
+# 核心数据操作
+# ---------------------------------------------------------------------------
 
 def load_vocab():
     if not os.path.exists(VOCAB_FILE):
@@ -235,6 +342,62 @@ def cmd_stats():
         print("\n  🎉 没有薄弱词，继续保持！")
 
 
+def build_report():
+    """生成纯文本统计报告内容（不发送）。"""
+    data = load_vocab()
+    words = data.get("words", [])
+    if not words:
+        return "📭 生词本为空，暂无统计报告。"
+
+    total = len(words)
+    total_quizzes = 0
+    total_correct = 0
+    weak_words = []
+
+    for w in words:
+        history = w.get("quiz_history", [])
+        total_quizzes += len(history)
+        c = sum(1 for q in history if q["result"] == "correct")
+        total_correct += c
+        if history:
+            acc = c / len(history)
+            if acc < 0.6:
+                weak_words.append((w["word"], w.get("chinese", ""), acc, len(history)))
+
+    weak_words.sort(key=lambda x: x[2])
+    overall_acc = total_correct / total_quizzes * 100 if total_quizzes > 0 else 0
+
+    lines = [
+        f"📊 生词本统计报告",
+        f"{'='*40}",
+        f"总单词数：{total}",
+        f"总测验次数：{total_quizzes}",
+        f"总正确率：{total_correct}/{total_quizzes} ({overall_acc:.0f}%)",
+    ]
+    if weak_words:
+        lines.append(f"\n薄弱词（正确率 < 60%）：")
+        for w, cn, acc, n in weak_words[:10]:
+            lines.append(f"  {w} — {cn} — {acc*100:.0f}%（{n}次）")
+    else:
+        lines.append(f"\n🎉 暂无薄弱词，继续保持！")
+    return "\n".join(lines)
+
+
+def cmd_report(to_addr):
+    """生成统计报告并发送到指定邮箱。"""
+    subject = f"📝 生词本统计报告 {datetime.date.today().isoformat()}"
+    body = build_report()
+    if "为空" in body:
+        print(body)
+        return
+
+    ok, msg = send_email_report(to_addr, subject, body)
+    if ok:
+        print(f"✅ {msg}")
+    else:
+        print(f"❌ {msg}")
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print(__doc__)
@@ -264,6 +427,18 @@ if __name__ == "__main__":
         cmd_list()
     elif cmd == "stats":
         cmd_stats()
+    elif cmd == "report":
+        # report --to xxx@example.com
+        args = sys.argv[2:]
+        if "--to" not in args:
+            print("用法: vocabulary.py report --to <email>")
+            sys.exit(1)
+        idx = args.index("--to")
+        to_addr = args[idx + 1] if idx + 1 < len(args) else ""
+        if not to_addr:
+            print("用法: vocabulary.py report --to <email>")
+            sys.exit(1)
+        cmd_report(to_addr)
     else:
         print(f"未知命令: {cmd}")
         print(__doc__)

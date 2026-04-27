@@ -54,6 +54,16 @@ python3 {baseDir}/scripts/vocabulary.py stats
 - 总单词数、总测验次数、总正确率
 - 薄弱词列表（正确率 < 60%）
 
+### 发送统计邮件报告
+
+```bash
+python3 {baseDir}/scripts/vocabulary.py report --to <email>
+```
+
+- 自动发现系统中可用的邮件 skill 并发送
+- 邮件主题：「📝 生词本统计报告 YYYY-MM-DD」
+- 邮件正文：生词本统计（总单词数、测验次数、正确率、薄弱词）
+
 ## 数据结构
 
 ```json
@@ -84,13 +94,21 @@ python3 {baseDir}/scripts/vocabulary.py stats
 2. 聚合所有单词的 `quiz_history`，计算各项指标
 3. 展示给用户
 
-**发送统计邮件：**
-当用户要求发送统计报告时：
-1. 检查 `~/.openclaw/workspace/skills/qqmail/` 是否存在（email skill）
-2. 若存在：调用 qqmail 发送统计到 `lidong.he@foxmail.com`，邮件内容包含：
-   - 生词本统计（总单词数、测验次数、正确率、薄弱词）
-   - Workspace 动态摘要（今日完成事项、配置变更、活跃项目）
-3. 若不存在：告知用户未配置邮件技能
+**发送统计邮件（动态发现）：**
+当用户要求发送统计报告时，Agent 调用 `vocabulary.py report --to <addr>`，脚本内部：
+1. 扫描 `~/.openclaw/workspace/skills/` 下所有已安装的邮件 skill
+2. 按优先级尝试调用可用 skill 的发送命令
+3. 成功发送后返回结果；未发现任何邮件 skill 时告知用户
+
+**支持的邮件 skill（自动发现）：**
+
+| Skill | 检测方式 | 发送命令 |
+|-------|---------|---------|
+| `qqmail` | `scripts/qqmail.py` 存在 | `python3 qqmail.py send --to --subject --body` |
+| `email-163-com` | `scripts/*.py` 存在 | `python3 *.py send --to --subject --body` |
+| 其他邮件 skill | 目录含 `email`/`mail` 关键词 | 尝试运行 `send` 子命令 |
+
+其他用户安装任意邮件 skill 后，报告功能无需额外配置即可自动工作。
 
 ## 触发关键词
 
