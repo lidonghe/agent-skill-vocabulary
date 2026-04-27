@@ -167,12 +167,12 @@ def send_email_report(to_addr, subject, body):
 
 def load_vocab():
     if not os.path.exists(VOCAB_FILE):
-        return {"words": [], "next_id": 1}
+        return {"words": [], "next_id": 1, "settings": {}}
     try:
         with open(VOCAB_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     except (json.JSONDecodeError, IOError):
-        return {"words": [], "next_id": 1}
+        return {"words": [], "next_id": 1, "settings": {}}
 
 
 def save_vocab(data):
@@ -233,6 +233,7 @@ def fetch_definition(word):
 def cmd_add(word):
     data = load_vocab()
     word_lower = word.strip().lower()
+    is_first_word = len(data["words"]) == 0  # 添加前单词本是否为空
 
     for w in data["words"]:
         if w["word"].lower() == word_lower:
@@ -260,6 +261,17 @@ def cmd_add(word):
     data["words"].append(entry)
     data["next_id"] += 1
     save_vocab(data)
+
+    # 如果是首次添加单词（单词本从空变为有单词），自动发一封初始状态报告
+    if is_first_word:
+        settings = data.get("settings", {})
+        report_email = settings.get("report_email")
+        if report_email:
+            subject = f"📝 生词本统计报告 {datetime.date.today().isoformat()}"
+            body = build_report()
+            ok, _ = send_email_report(report_email, subject, body)
+            if ok:
+                print(f"\n📧 初始状态报告已发送至 {report_email}")
 
     lines = [f"✅ 已添加: **{lookup['word']}**"]
     if entry.get("phonetic"):
@@ -492,7 +504,14 @@ def build_report():
 
 
 def cmd_report(to_addr):
-    """生成统计报告并发送到指定邮箱。"""
+    """生成统计报告并发送到指定邮箱，同时保存邮箱到 settings。"""
+    data = load_vocab()
+    # 保存邮箱，后续首次添加时自动发报告
+    if "settings" not in data:
+        data["settings"] = {}
+    data["settings"]["report_email"] = to_addr
+    save_vocab(data)
+
     subject = f"📝 生词本统计报告 {datetime.date.today().isoformat()}"
     body = build_report()
     if "为空" in body:
